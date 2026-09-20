@@ -1,10 +1,10 @@
 # QueueKiller - Skip the line. Live your life. ⚡
 
 **Live Demo (Nest - Never Sleeps):** https://yourname.hackclub.app
-**Built in:** Kochi, Kerala
+**Built in:**  Kerala
 
 ### The Real Problem
-Every day in Kochi we waste 20-30 mins standing in physical queues - canteen, xerox shop, clinic, fees office. In Kochi heat, you can't leave the line or you lose your spot. If you go for chai, your turn is gone.
+Every day  we waste 20-30 mins standing in physical queues - canteen, xerox shop, clinic, fees office. In these days heat, you can't leave the line or you lose your spot. If you go to use the loo , your turn is gone.
 
 QueueKiller converts physical queue to digital. Take a token Q001 from phone, see live board, know exactly how many are ahead and your wait time. Wait anywhere - shop will call you when it's your turn.
 
