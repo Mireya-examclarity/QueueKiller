@@ -1,6 +1,4 @@
 # QueueKiller - Skip the line. Live your life. ⚡
-
-**Live Demo (Nest - Never Sleeps):** https://yourname.hackclub.app
 **Built in:**  Kerala
 
 ### The Real Problem
