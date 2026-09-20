@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Q - Smart Queue</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui;background:#FFF8F0;min-height:100vh;color:#2d2d2d}
+.top{padding:25px;text-align:center}
+.top h1{font-size:32px;letter-spacing:-1px}
+.top p{color:#888;margin-top:5px}
+.container{max-width:900px;margin:0 auto;padding:15px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:700px){.container{grid-template-columns:1fr}}
+.card{background:white;border-radius:20px;padding:22px;box-shadow:0 8px 30px rgba(0,0,0,0.06);border:1px solid #fff0e0}
+.card h3{font-size:18px;margin-bottom:15px}
+input{width:100%;padding:13px 15px;margin:7px 0;border-radius:12px;border:1.5px solid #ffe4d0;background:#fffaf5;font-size:14px;outline:none}
+input:focus{border-color:#FF6B6B;background:white}
+.btn{width:100%;padding:13px;border:none;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;transition:0.2s}
+.btn-primary{background:#FF6B6B;color:white}
+.btn-primary:hover{background:#ff5252;transform:translateY(-1px)}
+.btn-dark{background:#2d2d2d;color:white;margin-top:8px}
+.btn-red{background:#fff1f1;color:#ff4d4d;margin-top:8px}
+.stats{display:flex;gap:10px;margin:15px 0}
+.stat{flex:1;background:#fffaf5;border-radius:12px;padding:12px;text-align:center;border:1px dashed #ffdcc2}
+.stat b{font-size:22px;display:block}
+.stat span{font-size:12px;color:#888}
+.person{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;margin:8px 0;background:#fffaf5;border:1px solid transparent}
+.person.serving{background:#e8fff1;border-color:#6BCB77}
+.dot{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px}
+.badge{margin-left:auto;font-size:11px;padding:4px 8px;border-radius:20px;font-weight:700;text-transform:uppercase}
+.waiting-badge{background:#fff0c2;color:#8a6d00}
+.serving-badge{background:#d1ffe0;color:#1a7a2e}
+.token{font-weight:800;color:#FF6B6B}
+</style>
+</head>
+<body>
+<div class="top">
+<h1>☕ QueueFlow</h1>
+<p>No more standing. Just vibe.</p>
+</div>
+
+<div class="container">
+<!-- LEFT: JOIN -->
+<div class="card">
+<h3>✨ Join the Queue</h3>
+<form action="/add" method="POST">
+<input name="name" placeholder="Your name? e.g. Mireya" required>
+<input name="place" placeholder="Where from? Kochi">
+<input name="vibe" placeholder="Your vibe today? Chill, urgent...">
+<button class="btn btn-primary">Get My Token 🎟️</button>
+</form>
+<div class="stats">
+<div class="stat"><b>{{ served }}</b><span>Served</span></div>
+<div class="stat"><b>{{ waiting|length }}</b><span>Waiting</span></div>
+<div class="stat"><b>{{ counter - 1 }}</b><span>Total Tokens</span></div>
+</div>
+</div>
+
+<!-- RIGHT: LIVE QUEUE -->
+<div class="card">
+<h3>🔴 Live Queue</h3>
+<p style="font-size:13px;color:#888;margin-bottom:10px">Now serving: <b style="color:#6BCB77">{{ queue|selectattr('status','equalto','serving')|map(attribute='token')|first or '---' }}</b></p>
+
+{% for q in queue %}
+{% if q.status in ['waiting','serving'] %}
+<div class="person {{ q.status }}">
+<div class="dot" style="background:{{ q.color }}">{{ q.token }}</div>
+<div><div class="token">{{ q.token }} • {{ q.name }}</div><div style="font-size:12px;color:#888">{{ q.place }} • {{ q.time }}</div></div>
+<span class="badge {{ q.status }}-badge">{{ q.status }}</span>
+</div>
+{% endif %}
+{% endfor %}
+
+{% if waiting|length == 0 and queue|selectattr('status','equalto','serving')|list|length == 0 %}
+<p style="text-align:center;padding:30px;color:#bbb">Queue is empty. Be the first! 🎉</p>
+{% endif %}
+
+<a href="/next"><button class="btn btn-dark">⏭️ Serve Next</button></a>
+<a href="/clear"><button class="btn btn-red">Clear All</button></a>
+</div>
+</div>
+</body>
+</html> 

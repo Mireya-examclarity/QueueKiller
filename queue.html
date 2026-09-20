@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Token {{ person.token }}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui;background:#FFF8F0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.ticket{background:white;width:100%;max-width:380px;border-radius:24px;padding:28px;box-shadow:0 20px 60px rgba(255,107,107,0.15);text-align:center;border:2px dashed #FF6B6B;position:relative}
+.ticket::before{content:'';position:absolute;top:-15px;left:50%;transform:translateX(-50%);width:30px;height:30px;background:#FFF8F0;border-radius:50%;box-shadow:inset 0 -2px 0 rgba(0,0,0,0.05)}
+.top-icon{width:60px;height:60px;border-radius:50%;background:{{ person.color }};color:white;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;margin:0 auto 15px}
+.token{font-size:56px;font-weight:900;letter-spacing:-2px;color:#2d2d2d;line-height:1}
+.name{font-size:20px;font-weight:700;margin:10px 0 5px}
+.meta{color:#888;font-size:13px}
+.divider{border:none;border-top:2px dashed #ffe4d0;margin:20px 0}
+.info{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:15px 0}
+.box{background:#fffaf5;border-radius:14px;padding:14px;border:1px solid #ffe4d0}
+.box b{font-size:26px;display:block}
+.box span{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px}
+.status{padding:8px 14px;border-radius:20px;font-size:12px;font-weight:800;text-transform:uppercase;display:inline-block;margin-top:10px}
+.waiting{background:#fff0c2;color:#8a6d00}.serving{background:#d1ffe0;color:#1a7a2e;animation:pulse 1.5s infinite}.done{background:#eee;color:#666}.cancelled{background:#ffe0e0;color:#a00}
+@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+.btn{width:100%;padding:13px;border:none;border-radius:12px;font-weight:700;margin-top:8px;cursor:pointer}
+.btn-leave{background:#fff1f1;color:#ff4d4d}.btn-home{background:#2d2d2d;color:white}
+.small{font-size:12px;color:#aaa;margin-top:15px}
+</style>
+<script>
+setInterval(async()=>{
+let r=await fetch('/api/queue/{{ person.token }}');let d=await r.json();
+if(d.error)return;
+document.getElementById('ahead').innerText=d.people_ahead;
+document.getElementById('wait').innerText=d.wait_time;
+let s=document.getElementById('status');s.innerText=d.status;s.className='status '+d.status;
+if(d.status==='done'){document.getElementById('msg').innerText='Your turn is done! Thanks 🎉';}
+if(d.status==='serving'){document.getElementById('msg').innerText='It\'s your turn now! Come to counter 🔔';}
+},2500);
+</script>
+</head>
+<body>
+<div class="ticket">
+<div class="top-icon">{{ person.token[0] }}</div>
+<div class="token">{{ person.token }}</div>
+<div id="status" class="status {{ person.status }}">{{ person.status }}</div>
+<div class="name">{{ person.name }}</div>
+<div class="meta">{{ person.place }} • {{ person.time }} • {{ person.vibe }}</div>
+<hr class="divider">
+<div class="info">
+<div class="box"><b id="ahead">{{ people_ahead }}</b><span>People Ahead</span></div>
+<div class="box"><b id="wait">{{ wait_time }}</b><span>Mins Wait</span></div>
+</div>
+<p id="msg" style="font-size:14px;color:#666;margin:10px 0">
+{% if person.status == 'waiting' %}You're in line! Auto-updating... ✨{% elif person.status == 'serving' %}It's your turn now! Come to counter 🔔{% else %}Status: {{ person.status }}{% endif %}
+</p>
+{% if person.status == 'waiting' %}
+<a href="/leave/{{ person.token }}"><button class="btn btn-leave">Leave Queue</button></a>
+{% endif %}
+<a href="/"><button class="btn btn-home">Back to Queue</button></a>
+<div class="small">Keep this page open • Live updates every 3 sec</div>
+</div>
+</body>
+</html>
