@@ -17,7 +17,7 @@ This is not another to-do app. This solves a real, physical, daily pain point fo
 - 📍 **Multi-location** - Canteen, Xerox, Clinic, Fees Office, Bus Counter
 - 😎 **Mood Tags** - Chill, Normal, Urgent
 - 🔧 **Owner Controls** - Call Next, Clear All, Add Demo data
-- 💡 **Smart Tips** - If wait >6 mins, "Go grab chai, we'll hold spot"
+- 💡 **Smart Tips** - If wait >6 mins, "Go grab tea, we'll hold spot"
 - 🎨 **Cool UI** - Glassmorphism cards, gradients, Space Grotesk font
 
 ### Tech Stack
