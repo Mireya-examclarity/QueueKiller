@@ -29,21 +29,21 @@ input:focus{border-color:#111}
 .avatar{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:white;font-weight:800}
 .progress{height:6px;background:#f0f0f0;border-radius:10px;overflow:hidden;margin:12px 0}
 .progress-bar{height:100%;background:linear-gradient(90deg,#FF6B6B,#4D96FF);width:0%;transition:1s}
-.story{font-size:12px;color:#666;background:#fff8e1;padding:8px 12px;border-radius:10px;margin-top:8px;display:inline-block}
+.view{animation:pop.3s ease}
+@keyframes pop{from{transform:scale(.98);opacity:0}to{transform:scale(1);opacity:1}}
+.game{margin-top:18px;background:#f7f7ff;border-radius:16px;padding:16px;border:1px dashed #c5c5ff;text-align:center}
 </style>
 </head>
 <body>
 <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
-<div class="nav"><b>QueueFlow ✨</b><div class="live"><div class="dot-live"></div> LIVE {{ waiting|length }} waiting</div></div>
+<div class="nav"><b>QueueFlow ✨</b><div class="live"><div class="dot-live"></div> LIVE <span id="liveCount">0</span> waiting</div></div>
 
-<div class="wrap">
+<div id="mainView" class="wrap view">
 <div class="card">
 <h3>Join the vibe queue</h3><p class="sub">Get a token, pick your vibe, wait without the boredom</p>
-<form action="/add" method="POST" id="form">
-<input name="name" id="name" placeholder="Your name" required>
-<input name="place" placeholder="From? Kochi, Calicut...">
-<div style="margin:12px 0">
-<p style="font-size:13px;font-weight:700;margin-bottom:6px">What's your vibe today?</p>
+<input id="name" placeholder="Your name" required>
+<input id="place" placeholder="From? Kochi, Calicut...">
+<p style="font-size:13px;font-weight:700;margin:12px 0 6px">What's your vibe today?</p>
 <div class="vibe-grid">
 <div class="vibe" onclick="pick(this,'Chill 😌')">Chill 😌</div>
 <div class="vibe" onclick="pick(this,'Urgent ⚡️')">Urgent ⚡️</div>
@@ -52,42 +52,106 @@ input:focus{border-color:#111}
 <div class="vibe" onclick="pick(this,'Boss Mode 😎')">Boss 😎</div>
 <div class="vibe" onclick="pick(this,'Hungry 🍔')">Hungry 🍔</div>
 </div>
-<input type="hidden" name="vibe" id="vibeInput">
-</div>
-<button class="btn btn-main" type="submit">🎟️ Get Token + Confetti</button>
-</form>
+<input type="hidden" id="vibeInput">
+<button class="btn btn-main" onclick="addPerson()">🎟️ Get Token + Confetti</button>
 <div class="progress"><div class="progress-bar" id="bar"></div></div>
-<p style="font-size:12px;color:#999;text-align:center">Tokens served today: {{ served }} • Total: {{ counter-1 }}</p>
+<p style="font-size:12px;color:#999;text-align:center">Tokens served today: <span id="served">0</span> • Total: <span id="total">0</span></p>
 </div>
 
 <div class="card">
-<h3>Who's in line?</h3><p class="sub">Serving <b style="color:#6BCB77">{{ queue|selectattr('status','equalto','serving')|map(attribute='token')|first or '---' }}</b> now • Tap Next to serve</p>
-{% for q in queue %}
-{% if q.status in ['waiting','serving'] %}
-<div class="person" style="border-left:4px solid {{ q.color }}">
-<div class="avatar" style="background:{{ q.color }}">{{ q.name[0]|upper }}</div>
-<div style="flex:1">
-<div style="font-weight:700">{{ q.token }} • {{ q.name }} <span style="font-weight:400;color:#888;font-size:12px">{{ q.vibe }}</span></div>
-<div style="font-size:11px;color:#888">{{ q.place }} • {{ q.time }}</div>
-{% if q.status == 'waiting' %}<div class="story">"{{ q.name }} is {{ q.vibe }} and waiting..."</div>{% endif %}
-</div>
-<div style="font-size:10px;padding:4px 8px;border-radius:20px;font-weight:700;background:{% if q.status=='serving' %}#d1ffe0{% else %}#fff0c2{% endif %}">{{ q.status }}</div>
-</div>
-{% endif %}
-{% endfor %}
-{% if waiting|length==0 %}<p style="text-align:center;padding:40px;color:#bbb">Empty queue. Add some chaos! 🎉</p>{% endif %}
+<h3>Who's in line?</h3><p class="sub">Serving <b id="servingNow" style="color:#6BCB77">---</b> now</p>
+<div id="queueList"></div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
-<a href="/next" style="text-decoration:none"><button class="btn btn-main">⏭️ Next</button></a>
-<a href="/clear" style="text-decoration:none"><button class="btn" style="background:#ffe0e0;color:#a00">Clear</button></a>
+<button class="btn btn-main" onclick="nextToken()">⏭️ Next</button>
+<button class="btn" style="background:#ffe0e0;color:#a00" onclick="clearQ()">Clear</button>
 </div>
 </div>
 </div>
+
+<div id="personalView" class="view" style="display:none;min-height:80vh;align-items:center;justify-content:center;padding:20px"></div>
+
 <script>
-function pick(el,val){document.querySelectorAll('.vibe').forEach(v=>v.classList.remove('selected'));el.classList.add('selected');document.getElementById('vibeInput').value=val;}
-document.getElementById('form').addEventListener('submit',()=>{
-let bar=document.getElementById('bar');bar.style.width='100%';bar.style.transition='0.8s';
-});
-let n=document.getElementById('name');n&&n.addEventListener('input',()=>{if(n.value.length>2)document.getElementById('bar').style.width=(n.value.length*10)+'%';});
+let queue = JSON.parse(localStorage.getItem('qf_queue')||'[]');
+let counter = parseInt(localStorage.getItem('qf_counter')||'1');
+let served = parseInt(localStorage.getItem('qf_served')||'0');
+let vibeVal = '';
+
+function save(){localStorage.setItem('qf_queue',JSON.stringify(queue));localStorage.setItem('qf_counter',counter);localStorage.setItem('qf_served',served);}
+function pick(el,val){document.querySelectorAll('.vibe').forEach(v=>v.classList.remove('selected'));el.classList.add('selected');document.getElementById('vibeInput').value=val;vibeVal=val;}
+document.getElementById('name').addEventListener('input',e=>{document.getElementById('bar').style.width=Math.min(100,e.target.value.length*10)+'%';});
+
+function addPerson(){
+ let name=document.getElementById('name').value.trim();
+ let place=document.getElementById('place').value.trim();
+ if(!name)return alert('Enter name bro');
+ let token=`Q${String(counter).padStart(3,'0')}`;
+ let entry={token,name,place,vibe:vibeVal||'Chill 😌',color:["#FF6B6B","#4D96FF","#6BCB77"][Math.floor(Math.random()*3)],time:new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),status:'waiting'};
+ queue.push(entry);counter++;save();render();
+ showPersonal(token);
+ // confetti
+ confetti();
+ document.getElementById('name').value='';document.getElementById('place').value='';
+}
+
+function getActive(){return queue.filter(q=>['waiting','serving'].includes(q.status));}
+function getPosition(tok){let a=getActive();for(let i=0;i<a.length;i++)if(a[i].token===tok)return i;return null;}
+
+function render(){
+ let waiting=queue.filter(q=>q.status==='waiting');
+ let serving=queue.find(q=>q.status==='serving');
+ document.getElementById('liveCount').innerText=waiting.length;
+ document.getElementById('served').innerText=served;
+ document.getElementById('total').innerText=counter-1;
+ document.getElementById('servingNow').innerText=serving?serving.token:'---';
+ let list=document.getElementById('queueList');list.innerHTML='';
+ getActive().forEach(q=>{
+  list.innerHTML+=`<div class="person" style="border-left:4px solid ${q.color}">
+  <div class="avatar" style="background:${q.color}">${q.name[0].toUpperCase()}</div>
+  <div style="flex:1"><div style="font-weight:700">${q.token} • ${q.name} <span style="font-weight:400;color:#888;font-size:12px">${q.vibe}</span></div><div style="font-size:11px;color:#888">${q.place} • ${q.time}</div></div>
+  <div style="font-size:10px;padding:4px 8px;border-radius:20px;font-weight:700;background:${q.status==='serving'?'#d1ffe0':'#fff0c2'}">${q.status}</div>
+  </div>`;
+ });
+ if(waiting.length===0 &&!serving)list.innerHTML='<p style="text-align:center;padding:40px;color:#bbb">Empty queue. Add some chaos! 🎉</p>';
+}
+
+function nextToken(){
+ for(let p of queue){if(p.status==='serving'){p.status='done';served++;break;}}
+ for(let p of queue){if(p.status==='waiting'){p.status='serving';break;}}
+ save();render();
+ if(document.getElementById('personalView').style.display!=='none'){let tok=document.getElementById('personalView').dataset.token;showPersonal(tok);}
+}
+
+function clearQ(){if(confirm('Clear all?')){queue=[];counter=1;served=0;save();render();showMain();}}
+
+function showMain(){document.getElementById('mainView').style.display='grid';document.getElementById('personalView').style.display='none';}
+function showPersonal(token){
+ let person=queue.find(p=>p.token===token);if(!person)return;
+ let pos=getPosition(token);let ahead=pos!==null?Math.max(pos-1,0):0;let wait=ahead*2;
+ document.getElementById('mainView').style.display='none';
+ let v=document.getElementById('personalView');v.style.display='flex';v.dataset.token=token;
+ v.innerHTML=`<div class="card" style="width:100%;max-width:400px;text-align:center;border-top:6px solid ${person.color}">
+  <div style="font-size:72px;font-weight:800;color:${person.color}">${person.token}</div>
+  <div style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:800;display:inline-block;background:${person.status==='serving'?'#d1ffe0':'#fff0c2'}">${person.status}</div>
+  <div style="font-size:22px;font-weight:700;margin-top:8px">${person.name}</div>
+  <div style="font-size:28px;margin:10px 0">${person.vibe}</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0"><div style="background:#fafafa;border-radius:16px;padding:14px"><b style="font-size:28px">${ahead}</b><br><span style="font-size:10px;color:#999">AHEAD</span></div><div style="background:#fafafa;border-radius:16px;padding:14px"><b style="font-size:28px">${wait}</b><br><span style="font-size:10px;color:#999">MINS</span></div></div>
+  <div style="font-size:14px;background:#fff8e1;padding:12px;border-radius:12px">${person.status==='serving'?'YOUR TURN! Go to counter now 🔔':'You are '+ahead+' away. Chill! 🎮'}</div>
+  <div class="game"><div style="font-size:13px;font-weight:700">Bored? Tap game 🎮</div><div style="font-size:32px;font-weight:800" id="score">0</div><button onclick="tap()" style="padding:8px 14px;border-radius:10px;border:none;background:#4D96FF;color:white;font-weight:700;margin-top:8px;cursor:pointer">TAP! 👆</button></div>
+  <button onclick="showMain()" style="width:100%;margin-top:12px;padding:12px;border:none;border-radius:12px;background:#111;color:white;font-weight:700">View Full Queue</button>
+  </div>`;
+ let taps=0;window.tap=()=>{taps++;document.getElementById('score').innerText=taps;}
+ setTimeout(()=>{window.pInterval=setInterval(()=>{let p=queue.find(x=>x.token===token);if(!p)return;let np=getPosition(token);let na=np!==null?Math.max(np-1,0):0;if(document.querySelector('#personalView b')){v.querySelectorAll('b')[0].innerText=na;v.querySelectorAll('b')[1].innerText=na*2;}},2000)},100);
+}
+
+function confetti(){
+ const c=document.createElement('canvas');c.style.position='fixed';c.style.top=0;c.style.left=0;c.style.width='100%';c.style.height='100%';c.style.pointerEvents='none';document.body.appendChild(c);
+ let ctx=c.getContext('2d');c.width=innerWidth;c.height=innerHeight;
+ let pieces=[...Array(80)].map(()=>({x:Math.random()*c.width,y:Math.random()*c.height- c.height,r:Math.random()*6+2,d:Math.random()*5+2,color:`hsl(${Math.random()*360},100%,60%)`}));
+ let anim=setInterval(()=>{ctx.clearRect(0,0,c.width,c.height);pieces.forEach(p=>{ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,p.r,p.r);p.y+=p.d;});if(pieces[0].y>c.height){clearInterval(anim);c.remove();}},16);
+}
+render();
+// routing
+let tok=window.location.hash.replace('#','');if(tok)showPersonal(tok);
 </script>
 </body>
 </html>
