@@ -30,7 +30,7 @@ This not a new to-do app. This is solving a real, physical, daily problem for 10
 
 > Frontend: HTML
 
-> Hosting: Hack Club Nest (non-sleeping, always live) + GitHub Pages (backup)
+> Hosting: GitHub Pages 
 
 >No database needed - in-memory queue (perfect for small shops)
 
