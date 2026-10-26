@@ -1,0 +1,552 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QueueKiller</title>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;}
+
+
+body 
+{
+    background: #1a140e;
+    color: #e5e5e5;
+    padding: 16px;}
+
+
+h1 
+   { text-align: center;
+    font-size: 36px;
+    margin-top: 20px;
+    color: #ff8c32;}
+
+
+.sub 
+    {text-align: center;
+    color: #9a8a7a;
+    margin: 8px 0 20px 0;
+    font-size: 14px;}
+
+
+.card 
+{
+    background: #211c14;
+    border: 1px solid #3a2f22;
+    border-radius: 12px;
+    padding: 20px;
+    max-width: 700px;
+    margin: 18px auto;
+                       }
+
+.card h3 {
+    margin-bottom: 12px;
+    color: #ffad60;}
+
+
+input, select
+ {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #4a3d2b;
+    background: #15110d;
+    color: white;
+    margin: 6px 0;}
+
+
+.row 
+{
+    display: flex;
+    gap: 10px;}
+
+.row > * {
+    flex: 1;}
+
+
+button {
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+                        }
+
+.btn-main {
+    background: #ff8c32;
+    color: black;
+                            }
+
+.btn-main:disabled { opacity: 0.5;
+    cursor: not-allowed;}
+
+
+.btn-sec
+ {
+    background: #2a231b;
+    color: #c9b8a2;
+    border: 1px solid #4a3d2b;}
+
+
+#my-token 
+{
+    margin-top: 10px;
+    color: #ff8c32;
+    font-weight: bold;}
+                        
+
+#feedback, #owner-msg
+ {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #a3a3a3;
+                           }
+
+.now 
+{
+    font-size: 42px;
+    font-weight: bold;
+    text-align: center;
+    color: #ff8c32;
+    margin: 10px 0;
+    overflow-wrap: anywhere;}
+
+
+.now.highlight {
+    background: #ff8c32;
+    color: black;
+    border-radius: 8px;
+    padding: 4px 10px;
+                             }
+
+.center {text-align: center;}
+
+
+.info {
+    text-align: center;
+    color: #9a8a7a;
+    font-size: 14px;}
+
+
+.tip {
+    text-align: center;
+    color: #ffcc70;
+    font-size: 13px;
+    margin-top: 6px;}
+
+
+.token-row 
+{
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid #2e261b;
+    font-size: 14px;}
+
+
+.badge {
+    padding: 2px 7px;
+    border-radius: 12px;
+    font-size: 11px;
+    background: #2e261b;
+    color: #ffad60;
+    margin-left: 6px;}
+
+
+@media (max-width: 480px) 
+    
+   { .row {gap: 6px;}
+
+    .card
+     {padding: 15px;}
+    
+    .now
+     { font-size: 28px;}
+    
+    .token-row
+     {font-size: 12px;}
+
+    button 
+    { padding: 9px 10px;}}
+    
+</style>
+</head>
+
+<body>
+
+<h1>QueueKiller</h1>
+<p class="sub">We waste 20–30 minutes waiting in queues. QueueKiller helps save that time.</p>
+
+<div class="card">
+    <h3>1. Get Token - <span id="loc-label">Canteen</span></h3>
+
+    <input id="name" placeholder="Your name" maxlength="30">
+
+    <div class="row">
+        <select id="loc"></select>
+        <select id="mood"></select>
+    </div>
+
+    <button class="btn-main" id="join-btn" onclick="joinQ()">
+        Get Token Q001
+    </button>
+
+    <p id="my-token"></p>
+    <p id="feedback"></p>
+</div>
+
+<div class="card">
+    <h3>2. Live Board</h3>
+
+    <div class="center">
+        <div id="serving" class="now">--</div>
+    </div>
+
+    <p id="count" class="info"></p>
+    <p id="tip" class="tip"></p>
+    <div id="list" style="margin-top:12px;"></div>
+</div>
+
+<div class="card">
+    <h3>3. Owner Controls</h3>
+
+    <input
+     id="owner-pin"
+     type="password"
+    placeholder="Owner PIN"
+    maxlength="30"
+    style="max-width:180px;"
+    >
+
+    <div style="margin-top:8px;">
+    <button class="btn-main" onclick="callNext()">Call Next</button>
+    <button class="btn-sec" onclick="clearAll()">Clear All</button>
+    <button class="btn-sec" onclick="addDemo()">Add Demo</button>
+    </div>
+
+    <p id="owner-msg"></p>
+</div>
+
+<script>
+let current = "Canteen";
+let lastServing = null;
+let requestId = 0;
+let timers = {};
+
+// show a message and remove it after a few seconds
+function showMsg(id, text) {
+    let el = document.getElementById(id);
+
+    el.textContent = text;
+
+    if (timers[id]) {
+        clearTimeout(timers[id]);}
+    
+
+    timers[id] = setTimeout(function() {
+        el.textContent = "";
+        delete timers[id];
+    }, 3000);}
+
+
+
+// load the available locations and moods
+
+fetch("/api/locations")
+.then(r => {
+    if (!r.ok) throw new Error("Could not load locations");
+    return r.json();})
+
+.then(d => {
+    let locSel = document.getElementById("loc");
+    let moodSel = document.getElementById("mood");
+
+    d.locations.forEach(l => {
+        let o = document.createElement("option");
+        o.value = l;
+        o.textContent = l;
+        locSel.appendChild(o);});
+    
+
+    d.moods.forEach(m => {
+        let o = document.createElement("option");
+        o.value = m;
+        o.textContent = m;
+        moodSel.appendChild(o); });
+   
+
+    current = locSel.value;
+    document.getElementById("loc-label").textContent = current;
+
+    load();
+})
+.catch(() => {
+    showMsg("feedback", "Could not load locations. Refresh the page.");});
+
+
+
+// change the queue when another location is selected
+
+document.getElementById("loc").onchange = function() {
+    current = this.value;
+    document.getElementById("loc-label").textContent = current;
+    load();
+};
+
+
+// join a queue and get a token
+
+function joinQ() {
+    let nameInput = document.getElementById("name");
+    let name = nameInput.value.trim();
+
+    if (!name) {
+        showMsg("feedback", "Enter name first");
+        return;
+    }
+
+    let btn = document.getElementById("join-btn");
+    btn.disabled = true;
+    btn.textContent = "Getting...";
+
+    let loc = document.getElementById("loc").value;
+    let mood = document.getElementById("mood").value;
+
+    fetch("/api/join", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            name: name,
+            location: loc,
+            mood: mood
+        })
+    })
+    .then(r => {
+        if (!r.ok) throw new Error("Join failed");
+        return r.json();
+    })
+    .then(d => {
+        document.getElementById("my-token").textContent =
+            d.message + " | Wait: " + d.wait + " mins";
+
+        showMsg("feedback", "Token saved. Wait anywhere!");
+        load();
+    })
+    .catch(() => {
+        showMsg("feedback", "Could not join, try again");
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.textContent = "Get Token Q001";
+    });}
+
+
+
+// get the latest queue information
+
+function load() {
+    requestId += 1;
+    let thisReq = requestId;
+    let loc = current;
+
+    fetch("/api/queue?location=" + encodeURIComponent(loc))
+    .then(r => {
+        if (!r.ok) throw new Error("Queue request failed");
+        return r.json();
+    })
+    .then(d => {
+        // ignore an older response if the location has changed
+
+        if (thisReq !== requestId || loc !== current) return;
+
+        let servingEl = document.getElementById("serving");
+        let servingText = "--";
+
+        if (d.serving) {
+            servingText = "NOW: " + d.serving.token +
+                " - " + d.serving.name;
+
+            if (lastServing !== d.serving.token) {
+                servingEl.classList.add("highlight");
+
+                setTimeout(() => {
+                    servingEl.classList.remove("highlight");
+                }, 800);
+
+                lastServing = d.serving.token;
+            }}
+        else 
+        {
+            lastServing = null;}
+        
+
+        servingEl.textContent = servingText;
+
+        document.getElementById("count").textContent = d.message;
+        document.getElementById("tip").textContent = d.tip || "";
+
+        let list = document.getElementById("list");
+        list.innerHTML = "";
+
+        d.queue.forEach(p => {
+            let row = document.createElement("div");
+            row.className = "token-row";
+
+            let left = document.createElement("span");
+
+            let b = document.createElement("b");
+            b.textContent = p.token;
+            left.appendChild(b);
+
+            let nameSpan = document.createElement("span");
+            nameSpan.textContent = " " + p.name + " ";
+            left.appendChild(nameSpan);
+
+            let badge = document.createElement("span");
+            badge.className = "badge";
+            badge.textContent = p.mood;
+            left.appendChild(badge);
+
+            let right = document.createElement("span");
+            let waitText = p.status;
+
+            if (p.status === "waiting") {
+                waitText = p.wait + " min wait";
+            }
+
+            if (p.status === "serving") {
+                waitText = "Serving now";
+            }
+
+            right.textContent = waitText;
+
+            row.appendChild(left);
+            row.appendChild(right);
+
+            if (p.status === "serving") {
+                row.style.color = "#ff8c32";
+                                             }
+
+            list.appendChild(row);});})
+        
+    
+    .catch(() => {
+        console.log("Could not load queue");
+    });}
+
+
+
+// get the owner's PIN
+
+function getPin() {return document.getElementById("owner-pin").value;}
+
+
+
+// call the next person in the queue
+
+function callNext() {
+    fetch("/api/next", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            location: current,
+            pin: getPin()}) })
+        
+    .then(r => {
+        if (r.status === 403) throw new Error("pin");
+        if (!r.ok) throw new Error("request");
+        return r.json();
+    })
+    .then(d => {
+        if (d.now) {
+            showMsg("owner-msg", "Now serving " + d.now);}
+         else
+         {showMsg("owner-msg", "No one waiting");}
+        
+
+        load(); })
+   
+    .catch(e => {
+        if (e.message === "pin")
+         { showMsg("owner-msg", "Wrong PIN");}
+
+         else {showMsg("owner-msg", "Failed to call next"); }});}
+       
+    
+
+
+
+// clear the selected queue
+
+function clearAll() {
+    if (!confirm("Clear queue?")) return;
+
+    fetch("/api/clear", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            location: current,
+            pin: getPin()
+        })})
+    
+    .then(r => {
+        if (r.status === 403) throw new Error("pin");
+        if (!r.ok) throw new Error("request");
+        return r.json();})
+    
+    .then(() => {
+        showMsg("owner-msg", "Queue cleared");
+        load(); })
+   
+    .catch(e => {
+        if (e.message === "pin") {
+            showMsg("owner-msg", "Wrong PIN");
+        } else {
+            showMsg("owner-msg", "Clear failed");
+        } });}
+   
+
+
+
+// add sample people for testing
+
+function addDemo() {
+    fetch("/api/demo", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            location: current,
+            pin: getPin()})})
+        
+    
+    .then(r => 
+    {
+        if (r.status === 403) throw new Error("pin");
+        if (!r.ok) throw new Error("request");
+        return r.json();
+    })
+    .then(d => {
+        showMsg("owner-msg", d.message);
+        load();})
+    
+    .catch(e => {
+        if (e.message === "pin") 
+        {
+            showMsg("owner-msg", "Wrong PIN");}
+        else
+         {showMsg("owner-msg", "Demo failed");}});}
+        
+// refresh the live board every three seconds
+
+setInterval(load, 3000);
+</script>
+
+</body>
+</html>
